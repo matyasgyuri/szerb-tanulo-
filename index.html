@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magyar-Szerb Tanuló</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --accent: #38bdf8;
+      --text: #f8fafc;
+      --success: #22c55e;
+      --danger: #ef4444;
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .nav {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      justify-content: center;
+    }
+    button.tab-btn {
+      background: #334155;
+      color: var(--text);
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button.tab-btn.active {
+      background: var(--accent);
+      color: #0f172a;
+    }
+    .container {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .card {
+      width: 100%;
+      height: 220px;
+      perspective: 1000px;
+      cursor: pointer;
+    }
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      text-align: center;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+      background: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .card.flipped .card-inner {
+      transform: rotateY(180deg);
+    }
+    .card-face {
+      position: absolute;
+      backface-visibility: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+    }
+    .card-back {
+      transform: rotateY(180deg);
+    }
+    .term { font-size: 24px; font-weight: bold; }
+    .subterm { font-size: 18px; color: #94a3b8; }
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+      width: 100%;
+      justify-content: center;
+    }
+    .btn {
+      background: var(--card-bg);
+      border: 1px solid #475569;
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .quiz-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      width: 100%;
+      margin-top: 20px;
+    }
+    .quiz-btn {
+      background: var(--card-bg);
+      color: var(--text);
+      border: 1px solid #475569;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    .quiz-btn.correct { background: var(--success); border-color: var(--success); }
+    .quiz-btn.wrong { background: var(--danger); border-color: var(--danger); }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h2>Magyar – Szerb Tanuló</h2>
+    <div class="nav">
+      <button class="tab-btn active" onclick="switchMode('card')">Szókártyák</button>
+      <button class="tab-btn" onclick="switchMode('quiz')">Kvíz</button>
+    </div>
+    <div>
+      <label for="category-select" style="font-size: 14px; color: #94a3b8; margin-right: 8px;">Témakör:</label>
+      <select id="category-select" onchange="changeCategory(this.value)" style="background: #334155; color: #f8fafc; border: 1px solid #475569; padding: 6px 12px; border-radius: 6px;">
+        <option value="all">Minden téma</option>
+        <option value="jarmu">Tankolás & Jármű</option>
+        <option value="ut">Tájékozódás & Út</option>
+        <option value="hatar">Határ & Iratok</option>
+        <option value="szallas">Szállás & Segítség</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="container" id="app">
+    <div id="card-view" style="width: 100%;">
+      <div class="card" onclick="flipCard()">
+        <div class="card-inner" id="card-box">
+          <div class="card-face" id="front-content">
+            <span class="subterm">Magyarul</span>
+            <span class="term" id="hu-word">...</span>
+            <small style="margin-top: 12px; color: #64748b;">(Kattints a fordításhoz)</small>
+          </div>
+          <div class="card-face card-back" id="back-content">
+            <span class="subterm">Szerbül</span>
+            <span class="term" id="sr-latin">...</span>
+            <span class="subterm" id="sr-cyrillic">...</span>
+          </div>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="btn" onclick="prevCard()">← Előző</button>
+        <button class="btn" onclick="speakCurrent()">🔊 Kiejtés</button>
+        <button class="btn" onclick="nextCard()">Következő →</button>
+      </div>
+    </div>
+
+    <div id="quiz-view" style="width: 100%; display: none; text-align: center;">
+      <h3 id="quiz-question" style="margin-bottom: 24px;">Mit jelent ez a szó?</h3>
+      <div class="quiz-options" id="quiz-options"></div>
+      <p id="quiz-score" style="margin-top: 20px; color: #94a3b8;">Pontszám: 0</p>
+    </div>
+  </div>
+
+  <script>
+    const vocabulary = [
+      { cat: "jarmu", hu: "Tele kérem (üzemanyagot).", sr_latin: "Molim vas do vrha.", sr_cyrillic: "Молим вас до врха." },
+      { cat: "jarmu", hu: "Hol van a legközelebbi benzinkút?", sr_latin: "Gde je najbliža benzinska pumpa?", sr_cyrillic: "Где је најближа бензинска пумпа?" },
+      { cat: "jarmu", hu: "Keréknyomás", sr_latin: "Pritisak u gumama", sr_cyrillic: "Притисак у гумама" },
+      { cat: "jarmu", hu: "Benzin / Gázolaj", sr_latin: "Benzin / Dizel", sr_cyrillic: "Бензин / Дизел" },
+      { cat: "ut", hu: "Egyenesen", sr_latin: "Pravo", sr_cyrillic: "Право" },
+      { cat: "ut", hu: "Jobbra", sr_latin: "Desno", sr_cyrillic: "Десно" },
+      { cat: "ut", hu: "Balra", sr_latin: "Levo", sr_cyrillic: "Лево" },
+      { cat: "ut", hu: "Autópálya / Útdíj", sr_latin: "Auto-put / Putarina", sr_cyrillic: "Ауто-пут / Путарина" },
+      { cat: "ut", hu: "Hol van a parkoló?", sr_latin: "Gde je parking?", sr_cyrillic: "Где је паркинг?" },
+      { cat: "hatar", hu: "Útlevél / Személyi igazolvány", sr_latin: "Pasoš / Lična karta", sr_cyrillic: "Пасош / Лична karta" },
+      { cat: "hatar", hu: "Forgalmi engedély", sr_latin: "Saobraćajna dozvola", sr_cyrillic: "Саобраћајна дозвола" },
+      { cat: "hatar", hu: "Nincs elvámolnivalóm.", sr_latin: "Nemam ništa za prijavu.", sr_cyrillic: "Немам ништа за пријаву." },
+      { cat: "szallas", hu: "Van szabad szobájuk?", sr_latin: "Imate li slobodnih soba?", sr_cyrillic: "Имате ли слободних соба?" },
+      { cat: "szallas", hu: "Mennyibe kerül?", sr_latin: "Koliko košta?", sr_cyrillic: "Колико кошта?" },
+      { cat: "szallas", hu: "Segítségre van szükségem.", sr_latin: "Treba mi pomoć.", sr_cyrillic: "Треба ми помоћ." },
+      { cat: "szallas", hu: "Beszél angolul / magyarul?", sr_latin: "Govorite li engleski / mađarski?", sr_cyrillic: "Говорите ли енглески / мађарски?" }
+    ];
+
+    let activeList = [...vocabulary];
+    let currentIndex = 0;
+    let score = 0;
+
+    function changeCategory(cat) {
+      activeList = cat === 'all' ? [...vocabulary] : vocabulary.filter(item => item.cat === cat);
+      currentIndex = 0;
+      renderCard();
+    }
+
+    function renderCard() {
+      if (activeList.length === 0) return;
+      const item = activeList[currentIndex];
+      document.getElementById('hu-word').innerText = item.hu;
+      document.getElementById('sr-latin').innerText = item.sr_latin;
+      document.getElementById('sr-cyrillic').innerText = item.sr_cyrillic;
+      document.querySelector('.card').classList.remove('flipped');
+    }
+
+    function flipCard() {
+      document.querySelector('.card').classList.toggle('flipped');
+    }
+
+    function nextCard() {
+      currentIndex = (currentIndex + 1) % activeList.length;
+      renderCard();
+    }
+
+    function prevCard() {
+      currentIndex = (currentIndex - 1 + activeList.length) % activeList.length;
+      renderCard();
+    }
+
+    function speakCurrent() {
+      const text = activeList[currentIndex].sr_latin;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'sr-RS';
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function setupQuiz() {
+      const pool = activeList.length >= 4 ? activeList : vocabulary;
+      const current = pool[Math.floor(Math.random() * pool.length)];
+      document.getElementById('quiz-question').innerText = `Mit jelent: "${current.hu}"?`;
+
+      let options = [current];
+      while (options.length < 4) {
+        const rand = pool[Math.floor(Math.random() * pool.length)];
+        if (!options.includes(rand)) options.push(rand);
+      }
+      options.sort(() => Math.random() - 0.5);
+
+      const container = document.getElementById('quiz-options');
+      container.innerHTML = '';
+      options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'quiz-btn';
+        btn.innerText = `${opt.sr_latin} (${opt.sr_cyrillic})`;
+        btn.onclick = () => {
+          if (opt === current) {
+            btn.classList.add('correct');
+            score++;
+            setTimeout(setupQuiz, 700);
+          } else {
+            btn.classList.add('wrong');
+          }
+          document.getElementById('quiz-score').innerText = `Pontszám: ${score}`;
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function switchMode(mode) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      const target = window.event ? window.event.target : null;
+      if (target) target.classList.add('active');
+
+      if (mode === 'card') {
+        document.getElementById('card-view').style.display = 'block';
+        document.getElementById('quiz-view').style.display = 'none';
+        renderCard();
+      } else {
+        document.getElementById('card-view').style.display = 'none';
+        document.getElementById('quiz-view').style.display = 'block';
+        setupQuiz();
+      }
+    }
+
+    renderCard();
+  </script>
+</body>
+</html>
